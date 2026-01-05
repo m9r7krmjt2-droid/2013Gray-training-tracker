@@ -2543,6 +2543,14 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded, initializing...');
             
+            // GRAY TEAM: Force clear old data if this is first load of Gray Team tracker
+            // This ensures NPL roster doesn't carry over from browser cache
+            if (!localStorage.getItem('grayTeamInitialized')) {
+                console.log('First load of Gray Team tracker - clearing old data');
+                localStorage.clear();
+                localStorage.setItem('grayTeamInitialized', 'true');
+            }
+            
             // Initialize roster in localStorage if it doesn't exist
             if (!localStorage.getItem('teamRoster')) {
                 const defaultRoster = [
