@@ -10,6 +10,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -328,7 +331,7 @@
 
         .stat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -341,6 +344,202 @@
             border: 2px solid var(--light-blue);
             box-shadow: 0 5px 20px rgba(77, 166, 255, 0.3);
             transition: all 0.3s;
+        }
+
+        .stat-box.clickable {
+            cursor: pointer;
+        }
+
+        .stat-box.clickable:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(255, 214, 0, 0.4);
+            border-color: var(--bright-yellow);
+        }
+
+        .stat-box.clickable::after {
+            content: '📊';
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            font-size: 0.7rem;
+            opacity: 0.6;
+        }
+
+        .stat-box.clickable {
+            position: relative;
+        }
+
+        /* Chart Modal */
+        .chart-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-modal.active {
+            display: flex;
+        }
+
+        .chart-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        .chart-modal-content {
+            position: relative;
+            background: var(--card-dark);
+            border: 2px solid var(--light-blue);
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(77, 166, 255, 0.2);
+        }
+
+        .chart-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-modal-title {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 1.8rem;
+            color: var(--bright-yellow);
+        }
+
+        .chart-modal-close {
+            background: none;
+            border: none;
+            color: var(--light-blue);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+
+        .chart-modal-close:hover {
+            color: var(--bright-yellow);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 15px;
+        }
+
+        /* Flame Animation */
+        .flame-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .flame-wrapper {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 200px;
+        }
+
+        .flame {
+            position: absolute;
+            bottom: 0;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            filter: blur(1px);
+            animation: flicker 0.3s ease-in-out infinite alternate;
+        }
+
+        .flame.main {
+            background: linear-gradient(to top, #ff4500, #ff8c00, #ffd700);
+            box-shadow: 0 0 40px #ff4500, 0 0 60px #ff8c00, 0 0 80px #ffd700;
+        }
+
+        .flame.inner {
+            background: linear-gradient(to top, #ff8c00, #ffd700, #ffff00);
+            box-shadow: 0 0 20px #ffd700;
+        }
+
+        .flame.core {
+            background: linear-gradient(to top, #ffd700, #ffff00, #ffffff);
+            box-shadow: 0 0 10px #ffffff;
+        }
+
+        @keyframes flicker {
+            0% {
+                transform: scaleY(1) scaleX(1) translateY(0);
+            }
+            100% {
+                transform: scaleY(1.1) scaleX(0.95) translateY(-3px);
+            }
+        }
+
+        @keyframes flicker-alt {
+            0% {
+                transform: scaleY(1) scaleX(1) translateY(0) rotate(-2deg);
+            }
+            100% {
+                transform: scaleY(1.05) scaleX(1.05) translateY(-2px) rotate(2deg);
+            }
+        }
+
+        .flame.inner {
+            animation: flicker-alt 0.2s ease-in-out infinite alternate;
+        }
+
+        .flame.core {
+            animation: flicker 0.15s ease-in-out infinite alternate;
+        }
+
+        .flame-base {
+            width: 60px;
+            height: 20px;
+            background: radial-gradient(ellipse at center, #5c3d2e 0%, #2a1a12 100%);
+            border-radius: 50%;
+            margin-top: -10px;
+        }
+
+        .streak-number {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 3rem;
+            color: var(--bright-yellow);
+            text-shadow: 0 0 20px rgba(255, 214, 0, 0.8);
+            margin-top: 15px;
+        }
+
+        .streak-label {
+            color: var(--light-blue);
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+
+        .streak-message {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-top: 15px;
+            text-align: center;
+            max-width: 250px;
+        }
+
+        .no-flame {
+            font-size: 4rem;
+            opacity: 0.3;
+            margin-bottom: 20px;
         }
 
         .stat-box:hover {
@@ -995,9 +1194,36 @@
         /* Achievement Badges */
         .badges-container {
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            flex-direction: column;
+            gap: 12px;
             margin-top: 10px;
+        }
+
+        .badge-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .badge-row-label {
+            font-size: 0.75rem;
+            color: var(--light-blue);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .badge-row-items {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .badge-arrow {
+            color: var(--bright-yellow);
+            font-size: 0.9rem;
+            opacity: 0.6;
         }
 
         .badge {
@@ -1165,33 +1391,17 @@
                         <div class="stat-number" id="statSessions">0</div>
                         <div class="stat-label">Total Sessions</div>
                     </div>
-                    <div class="stat-box">
+                    <div class="stat-box clickable" onclick="showChart('minutes')">
                         <div class="stat-number" id="statMinutes">0</div>
                         <div class="stat-label">Total Minutes</div>
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="statBonus">0</div>
-                        <div class="stat-label">⭐ Bonus Minutes</div>
-                    </div>
-                    <div class="stat-box">
+                    <div class="stat-box clickable" onclick="showChart('calendar')">
                         <div class="stat-number" id="statStreak">0</div>
                         <div class="stat-label">🔥 Week Streak</div>
                     </div>
-                    <div class="stat-box">
+                    <div class="stat-box clickable" onclick="showChart('juggles')">
                         <div class="stat-number" id="statMaxJuggles">0</div>
                         <div class="stat-label">⚽ Max Juggles</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="statBallMastery">0</div>
-                        <div class="stat-label">⚽ Ball Mastery</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="statWallPassing">0</div>
-                        <div class="stat-label">🎯 Wall Passing</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number" id="statJuggling">0</div>
-                        <div class="stat-label">🤹 Juggling</div>
                     </div>
                 </div>
             </div>
@@ -1468,6 +1678,22 @@
         <div class="connection-status">
             <div class="status-dot"></div>
             <span>Connected</span>
+        </div>
+    </div>
+
+    <!-- Chart Modal -->
+    <div id="chartModal" class="chart-modal">
+        <div class="chart-modal-overlay" onclick="closeChartModal()"></div>
+        <div class="chart-modal-content">
+            <div class="chart-modal-header">
+                <span class="chart-modal-title" id="chartTitle">Progress</span>
+                <button class="chart-modal-close" onclick="closeChartModal()">✕</button>
+            </div>
+            <div id="chartBody">
+                <div class="chart-container">
+                    <canvas id="progressChart"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1794,7 +2020,9 @@
             if (!player.sessionHistory || !player.sessionHistory.length) return 0;
             const now = new Date();
             const startOfWeek = new Date(now);
-            startOfWeek.setDate(now.getDate() - now.getDay());
+            // Monday = 1, so we subtract (day - 1), but handle Sunday (0) as 7
+            const dayOfWeek = now.getDay() || 7; // Convert Sunday from 0 to 7
+            startOfWeek.setDate(now.getDate() - dayOfWeek + 1); // Go back to Monday
             startOfWeek.setHours(0, 0, 0, 0);
             return player.sessionHistory.filter(s => new Date(s.date) >= startOfWeek).length;
         }
@@ -1828,12 +2056,8 @@
             // Stats
             document.getElementById('statSessions').textContent = currentPlayer.sessions;
             document.getElementById('statMinutes').textContent = currentPlayer.totalMinutes;
-            document.getElementById('statBonus').textContent = currentPlayer.bonusMinutes;
             document.getElementById('statStreak').textContent = currentPlayer.weekStreak;
             document.getElementById('statMaxJuggles').textContent = currentPlayer.maxJuggles;
-            document.getElementById('statBallMastery').textContent = currentPlayer.ballMastery;
-            document.getElementById('statWallPassing').textContent = currentPlayer.wallPassing;
-            document.getElementById('statJuggling').textContent = currentPlayer.juggling;
             
             // Weekly progress
             const weeklySessions = getWeeklySessions(currentPlayer);
@@ -2208,58 +2432,80 @@
             setTimeout(() => container.remove(), 4000);
         }
 
-        // Badge definitions
-        const badgeDefinitions = [
-            { id: 'first_session', name: 'First Step', icon: '👟', description: 'Complete your first session', check: (p) => p.sessions >= 1 },
-            { id: 'ten_sessions', name: 'Getting Started', icon: '🌱', description: 'Complete 10 sessions', check: (p) => p.sessions >= 10, milestone: true },
-            { id: 'twentyfive_sessions', name: 'Dedicated', icon: '💪', description: 'Complete 25 sessions', check: (p) => p.sessions >= 25, milestone: true },
-            { id: 'fifty_sessions', name: 'Committed', icon: '🔥', description: 'Complete 50 sessions', check: (p) => p.sessions >= 50, milestone: true },
-            { id: 'hundred_sessions', name: 'Century Club', icon: '💯', description: 'Complete 100 sessions', check: (p) => p.sessions >= 100, milestone: true },
-            { id: 'hundred_minutes', name: 'Hour Hero', icon: '⏱️', description: 'Train for 100 minutes', check: (p) => p.totalMinutes >= 100, milestone: true },
-            { id: 'fivehundred_minutes', name: 'Grinder', icon: '⚡', description: 'Train for 500 minutes', check: (p) => p.totalMinutes >= 500, milestone: true },
-            { id: 'thousand_minutes', name: 'Iron Will', icon: '🏆', description: 'Train for 1000 minutes', check: (p) => p.totalMinutes >= 1000, milestone: true },
-            { id: 'juggle_25', name: 'Juggler', icon: '🤹', description: 'Reach 25 juggles', check: (p) => p.maxJuggles >= 25 },
-            { id: 'juggle_50', name: 'Ball Control', icon: '⚽', description: 'Reach 50 juggles', check: (p) => p.maxJuggles >= 50 },
-            { id: 'juggle_100', name: 'Juggle Master', icon: '🎪', description: 'Reach 100 juggles', check: (p) => p.maxJuggles >= 100, milestone: true },
-            { id: 'streak_3', name: 'On Fire', icon: '🔥', description: 'Earn a 3-week streak', check: (p) => p.weekStreak >= 3 },
-            { id: 'streak_5', name: 'Unstoppable', icon: '🚀', description: 'Earn a 5-week streak', check: (p) => p.weekStreak >= 5, milestone: true },
-            { id: 'streak_10', name: 'Legend', icon: '👑', description: 'Earn a 10-week streak', check: (p) => p.weekStreak >= 10, milestone: true },
+        // Badge definitions organized by category
+        const badgeCategories = [
+            {
+                name: 'Sessions',
+                icon: '📅',
+                badges: [
+                    { id: 'first_session', name: '1st Session', icon: '👟', check: (p) => p.sessions >= 1, target: 1, getValue: (p) => p.sessions },
+                    { id: 'ten_sessions', name: '10 Sessions', icon: '🌱', check: (p) => p.sessions >= 10, target: 10, getValue: (p) => p.sessions, milestone: true },
+                    { id: 'twentyfive_sessions', name: '25 Sessions', icon: '💪', check: (p) => p.sessions >= 25, target: 25, getValue: (p) => p.sessions, milestone: true },
+                    { id: 'fifty_sessions', name: '50 Sessions', icon: '🔥', check: (p) => p.sessions >= 50, target: 50, getValue: (p) => p.sessions, milestone: true },
+                    { id: 'hundred_sessions', name: '100 Sessions', icon: '💯', check: (p) => p.sessions >= 100, target: 100, getValue: (p) => p.sessions, milestone: true },
+                ]
+            },
+            {
+                name: 'Training Time',
+                icon: '⏱️',
+                badges: [
+                    { id: 'hundred_minutes', name: '100 Mins', icon: '⏱️', check: (p) => p.totalMinutes >= 100, target: 100, getValue: (p) => p.totalMinutes, milestone: true },
+                    { id: 'fivehundred_minutes', name: '500 Mins', icon: '⚡', check: (p) => p.totalMinutes >= 500, target: 500, getValue: (p) => p.totalMinutes, milestone: true },
+                    { id: 'thousand_minutes', name: '1000 Mins', icon: '🏆', check: (p) => p.totalMinutes >= 1000, target: 1000, getValue: (p) => p.totalMinutes, milestone: true },
+                ]
+            },
+            {
+                name: 'Juggling',
+                icon: '⚽',
+                badges: [
+                    { id: 'juggle_25', name: '25 Juggles', icon: '🤹', check: (p) => p.maxJuggles >= 25, target: 25, getValue: (p) => p.maxJuggles },
+                    { id: 'juggle_50', name: '50 Juggles', icon: '⚽', check: (p) => p.maxJuggles >= 50, target: 50, getValue: (p) => p.maxJuggles },
+                    { id: 'juggle_100', name: '100 Juggles', icon: '🎪', check: (p) => p.maxJuggles >= 100, target: 100, getValue: (p) => p.maxJuggles, milestone: true },
+                    { id: 'juggle_200', name: '200 Juggles', icon: '🌟', check: (p) => p.maxJuggles >= 200, target: 200, getValue: (p) => p.maxJuggles, milestone: true },
+                    { id: 'juggle_500', name: '500 Juggles', icon: '👑', check: (p) => p.maxJuggles >= 500, target: 500, getValue: (p) => p.maxJuggles, milestone: true },
+                ]
+            },
+            {
+                name: 'Week Streak',
+                icon: '🔥',
+                badges: [
+                    { id: 'streak_3', name: '3 Weeks', icon: '🔥', check: (p) => p.weekStreak >= 3, target: 3, getValue: (p) => p.weekStreak },
+                    { id: 'streak_5', name: '5 Weeks', icon: '🚀', check: (p) => p.weekStreak >= 5, target: 5, getValue: (p) => p.weekStreak, milestone: true },
+                    { id: 'streak_10', name: '10 Weeks', icon: '👑', check: (p) => p.weekStreak >= 10, target: 10, getValue: (p) => p.weekStreak, milestone: true },
+                ]
+            }
         ];
+
+        // Flatten badges for checking
+        const badgeDefinitions = badgeCategories.flatMap(cat => cat.badges);
 
         // Check and update badges
         function updateBadges(player) {
             const container = document.getElementById('badgesContainer');
             if (!container) return;
 
-            container.innerHTML = badgeDefinitions.map(badge => {
-                const unlocked = badge.check(player);
-                let progress = '';
-                
-                // Calculate progress for locked badges
-                if (!unlocked) {
-                    if (badge.id.includes('session')) {
-                        const target = parseInt(badge.id.match(/\d+/)?.[0]) || 1;
-                        progress = `${player.sessions}/${target}`;
-                    } else if (badge.id.includes('minute')) {
-                        const target = parseInt(badge.id.match(/\d+/)?.[0]) || 100;
-                        progress = `${player.totalMinutes}/${target}`;
-                    } else if (badge.id.includes('juggle')) {
-                        const target = parseInt(badge.id.match(/\d+/)?.[0]) || 25;
-                        progress = `${player.maxJuggles}/${target}`;
-                    } else if (badge.id.includes('streak')) {
-                        const target = parseInt(badge.id.match(/\d+/)?.[0]) || 3;
-                        progress = `${player.weekStreak}/${target}`;
-                    }
-                }
-
-                return `
-                    <div class="badge ${unlocked ? 'unlocked' : 'locked'}" title="${badge.description}">
-                        <span class="badge-icon">${badge.icon}</span>
-                        <span class="badge-name">${badge.name}</span>
-                        ${!unlocked && progress ? `<span class="badge-progress">${progress}</span>` : ''}
+            container.innerHTML = badgeCategories.map(category => `
+                <div class="badge-row">
+                    <div class="badge-row-label">${category.icon} ${category.name}</div>
+                    <div class="badge-row-items">
+                        ${category.badges.map((badge, idx) => {
+                            const unlocked = badge.check(player);
+                            const value = badge.getValue(player);
+                            const progress = !unlocked ? `${value}/${badge.target}` : '';
+                            const arrow = idx < category.badges.length - 1 ? '<span class="badge-arrow">→</span>' : '';
+                            
+                            return `
+                                <div class="badge ${unlocked ? 'unlocked' : 'locked'}" title="${badge.name}">
+                                    <span class="badge-icon">${badge.icon}</span>
+                                    <span class="badge-name">${badge.name}</span>
+                                    ${!unlocked && progress ? `<span class="badge-progress">${progress}</span>` : ''}
+                                </div>
+                                ${arrow}
+                            `;
+                        }).join('')}
                     </div>
-                `;
-            }).join('');
+                </div>
+            `).join('');
         }
 
         // Check for new badges and milestones
@@ -2329,6 +2575,243 @@
         function closeEditModal() {
             document.getElementById('editSessionModal').style.display = 'none';
             editingSessionIndex = null;
+        }
+
+        // Chart functionality
+        let currentChart = null;
+
+        function closeChartModal() {
+            document.getElementById('chartModal').classList.remove('active');
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;
+            }
+        }
+
+        function showChart(type) {
+            const modal = document.getElementById('chartModal');
+            const title = document.getElementById('chartTitle');
+            const chartBody = document.getElementById('chartBody');
+            
+            modal.classList.add('active');
+            
+            if (type === 'minutes') {
+                title.textContent = '📊 Training Breakdown';
+                renderMinutesChart();
+            } else if (type === 'juggles') {
+                title.textContent = '⚽ Juggling Progress';
+                chartBody.innerHTML = '<div class="chart-container"><canvas id="progressChart"></canvas></div>';
+                renderJugglesChart();
+            } else if (type === 'calendar') {
+                title.textContent = '🔥 Your Streak Flame';
+                renderFlameAnimation(chartBody);
+            }
+        }
+
+        function renderMinutesChart() {
+            if (!currentPlayer.sessionHistory || currentPlayer.sessionHistory.length === 0) {
+                document.getElementById('chartBody').innerHTML = '<p style="text-align: center; color: var(--light-blue); padding: 40px;">No training data yet. Log your first session!</p>';
+                return;
+            }
+
+            // Sum up all training categories
+            let ballMastery = 0, wallPassing = 0, juggling = 0, bonus = 0;
+            
+            currentPlayer.sessionHistory.forEach(session => {
+                ballMastery += session.ballMastery || 0;
+                wallPassing += session.wallPassing || 0;
+                juggling += session.juggling || 0;
+                bonus += session.bonusMinutes || 0;
+            });
+
+            const total = ballMastery + wallPassing + juggling + bonus;
+            
+            if (total === 0) {
+                document.getElementById('chartBody').innerHTML = '<p style="text-align: center; color: var(--light-blue); padding: 40px;">No training minutes logged yet!</p>';
+                return;
+            }
+
+            // Build the full HTML with chart container and summary
+            document.getElementById('chartBody').innerHTML = `
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="progressChart"></canvas>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px;">
+                    <div style="background: rgba(77, 166, 255, 0.2); padding: 10px; border-radius: 8px; text-align: center;">
+                        <div style="color: #4da6ff; font-weight: 600;">⚽ Ball Mastery</div>
+                        <div style="color: white; font-size: 1.2rem;">${ballMastery} min (${Math.round((ballMastery/total)*100)}%)</div>
+                    </div>
+                    <div style="background: rgba(10, 143, 62, 0.2); padding: 10px; border-radius: 8px; text-align: center;">
+                        <div style="color: #0a8f3e; font-weight: 600;">🎯 Wall Passing</div>
+                        <div style="color: white; font-size: 1.2rem;">${wallPassing} min (${Math.round((wallPassing/total)*100)}%)</div>
+                    </div>
+                    <div style="background: rgba(255, 214, 0, 0.2); padding: 10px; border-radius: 8px; text-align: center;">
+                        <div style="color: #ffd600; font-weight: 600;">🤹 Juggling</div>
+                        <div style="color: white; font-size: 1.2rem;">${juggling} min (${Math.round((juggling/total)*100)}%)</div>
+                    </div>
+                    <div style="background: rgba(255, 107, 0, 0.2); padding: 10px; border-radius: 8px; text-align: center;">
+                        <div style="color: #ff6b00; font-weight: 600;">⭐ Bonus</div>
+                        <div style="color: white; font-size: 1.2rem;">${bonus} min (${Math.round((bonus/total)*100)}%)</div>
+                    </div>
+                </div>
+            `;
+
+            // Now create the chart after the canvas is in the DOM
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            currentChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Ball Mastery', 'Wall Passing', 'Juggling', 'Bonus'],
+                    datasets: [{
+                        data: [ballMastery, wallPassing, juggling, bonus],
+                        backgroundColor: [
+                            '#4da6ff',
+                            '#0a8f3e',
+                            '#ffd600',
+                            '#ff6b00'
+                        ],
+                        borderColor: '#0d1117',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${context.label}: ${value} min (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderJugglesChart() {
+            if (!currentPlayer.sessionHistory || currentPlayer.sessionHistory.length === 0) {
+                document.getElementById('chartBody').innerHTML = '<p style="text-align: center; color: var(--light-blue); padding: 40px;">No juggling data yet. Log your first session!</p>';
+                return;
+            }
+
+            // Get sessions with juggles and track PRs
+            const jugglesData = [];
+            let runningMax = 0;
+            
+            currentPlayer.sessionHistory.forEach(session => {
+                if (session.maxJuggles > 0) {
+                    if (session.maxJuggles > runningMax) {
+                        runningMax = session.maxJuggles;
+                        jugglesData.push({
+                            date: new Date(session.date),
+                            juggles: session.maxJuggles,
+                            isPR: true
+                        });
+                    }
+                }
+            });
+
+            if (jugglesData.length === 0) {
+                document.getElementById('chartBody').innerHTML = '<p style="text-align: center; color: var(--light-blue); padding: 40px;">No juggling records yet. Start logging your juggles!</p>';
+                return;
+            }
+
+            const labels = jugglesData.map(d => d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            const data = jugglesData.map(d => d.juggles);
+
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Max Juggles',
+                        data: data,
+                        borderColor: '#0a8f3e',
+                        backgroundColor: 'rgba(10, 143, 62, 0.2)',
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#ffd600',
+                        pointBorderColor: '#ffd600',
+                        pointRadius: 8,
+                        pointHoverRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(10, 143, 62, 0.1)' },
+                            ticks: { color: '#0a8f3e' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(10, 143, 62, 0.1)' },
+                            ticks: { color: '#0a8f3e' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderFlameAnimation(container) {
+            const streak = currentPlayer.weekStreak || 0;
+            
+            if (streak === 0) {
+                container.innerHTML = `
+                    <div class="flame-container">
+                        <div class="no-flame">🔥</div>
+                        <div class="streak-number">0</div>
+                        <div class="streak-label">Week Streak</div>
+                        <div class="streak-message">Complete 3 sessions this week to start your streak!</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Scale flame size based on streak (min 1, grows with streak)
+            const baseSize = 50;
+            const scale = Math.min(1 + (streak * 0.15), 2.5); // Max 2.5x size
+            const mainHeight = baseSize * scale;
+            const mainWidth = mainHeight * 0.6;
+            const innerHeight = mainHeight * 0.7;
+            const innerWidth = innerHeight * 0.5;
+            const coreHeight = mainHeight * 0.4;
+            const coreWidth = coreHeight * 0.4;
+
+            // Motivational messages based on streak
+            let message = '';
+            if (streak === 1) message = "You're on fire! Keep it going!";
+            else if (streak === 2) message = "Two weeks strong! 💪";
+            else if (streak === 3) message = "Hat trick! Three weeks of dedication!";
+            else if (streak >= 4 && streak < 6) message = "Incredible consistency! 🌟";
+            else if (streak >= 6 && streak < 10) message = "You're UNSTOPPABLE! 🚀";
+            else if (streak >= 10) message = "LEGENDARY STATUS! 👑🔥👑";
+
+            container.innerHTML = `
+                <div class="flame-container">
+                    <div class="flame-wrapper" style="height: ${mainHeight + 50}px;">
+                        <div class="flame main" style="width: ${mainWidth}px; height: ${mainHeight}px;"></div>
+                        <div class="flame inner" style="width: ${innerWidth}px; height: ${innerHeight}px;"></div>
+                        <div class="flame core" style="width: ${coreWidth}px; height: ${coreHeight}px;"></div>
+                    </div>
+                    <div class="flame-base"></div>
+                    <div class="streak-number">🔥 ${streak}</div>
+                    <div class="streak-label">Week Streak</div>
+                    <div class="streak-message">${message}</div>
+                </div>
+            `;
         }
 
         async function saveEditedSession() {
