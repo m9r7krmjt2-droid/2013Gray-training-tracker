@@ -1815,6 +1815,53 @@
             });
         }
 
+        // Sanitize player data from old format
+        function sanitizePlayerData(player) {
+            // Skip invalid players
+            if (!player || !player.name || player.name === 'undefined') {
+                return null;
+            }
+            
+            // Ensure numeric fields are numbers, not objects
+            player.sessions = typeof player.sessions === 'number' ? player.sessions : 0;
+            player.totalMinutes = typeof player.totalMinutes === 'number' ? player.totalMinutes : 0;
+            player.bonusMinutes = typeof player.bonusMinutes === 'number' ? player.bonusMinutes : 0;
+            player.weekStreak = typeof player.weekStreak === 'number' ? player.weekStreak : 0;
+            player.maxJuggles = typeof player.maxJuggles === 'number' ? player.maxJuggles : 0;
+            player.ballMastery = typeof player.ballMastery === 'number' ? player.ballMastery : 0;
+            player.wallPassing = typeof player.wallPassing === 'number' ? player.wallPassing : 0;
+            player.juggling = typeof player.juggling === 'number' ? player.juggling : 0;
+            
+            // Ensure sessionHistory is an array
+            if (!Array.isArray(player.sessionHistory)) {
+                player.sessionHistory = [];
+            }
+            
+            // Get number from initialPlayers if missing
+            if (!player.number) {
+                const initial = initialPlayers.find(p => p.name === player.name);
+                if (initial) player.number = initial.number;
+            }
+            
+            return player;
+        }
+
+        // Merge Firebase data with initial roster
+        function mergeWithInitialRoster(firebasePlayers) {
+            const merged = [];
+            
+            initialPlayers.forEach(initial => {
+                const existing = firebasePlayers.find(p => p && p.name === initial.name);
+                if (existing) {
+                    merged.push({...JSON.parse(JSON.stringify(initial)), ...existing});
+                } else {
+                    merged.push(JSON.parse(JSON.stringify(initial)));
+                }
+            });
+            
+            return merged;
+        }
+
         // Load data from Firebase or localStorage
         async function loadData() {
             if (isFirebaseEnabled) {
@@ -1830,13 +1877,20 @@
                     const firebaseData = snapshot.val();
                     
                     if (firebaseData) {
-                        players = Object.values(firebaseData);
-                        players.sort((a, b) => a.name.localeCompare(b.name));
+                        // Get valid players from Firebase
+                        let firebasePlayers = Object.values(firebaseData)
+                            .map(sanitizePlayerData)
+                            .filter(p => p !== null);
+                        
+                        // Merge with initial roster
+                        players = mergeWithInitialRoster(firebasePlayers);
                     } else {
-                        // Initialize Firebase with default roster
+                        // Initialize with default roster
                         players = JSON.parse(JSON.stringify(initialPlayers));
                         await savePlayersToFirebase();
                     }
+                    
+                    players.sort((a, b) => a.name.localeCompare(b.name));
                     
                     // Recalculate all streaks
                     updateAllStreaks();
@@ -1861,10 +1915,14 @@
         function loadFromLocalStorage() {
             const saved = localStorage.getItem('gray-team-players-v2');
             if (saved) {
-                players = JSON.parse(saved);
+                let localPlayers = JSON.parse(saved)
+                    .map(sanitizePlayerData)
+                    .filter(p => p !== null);
+                players = mergeWithInitialRoster(localPlayers);
             } else {
                 players = JSON.parse(JSON.stringify(initialPlayers));
             }
+            players.sort((a, b) => a.name.localeCompare(b.name));
             // Recalculate all streaks
             updateAllStreaks();
         }
@@ -1876,9 +1934,24 @@
             try {
                 const playersObj = {};
                 players.forEach(p => {
-                    playersObj[p.name] = p;
+                    // Only save players with valid names
+                    if (p && p.name && typeof p.name === 'string' && p.name !== 'undefined') {
+                        playersObj[p.name] = p;
+                    }
                 });
                 await database.ref('players').set(playersObj);
+            } catch (error) {
+                console.error('Firebase save error:', error);
+            }
+        }
+
+        // Save a single player to Firebase (doesn't overwrite others)
+        async function savePlayerToFirebase(player) {
+            if (!isFirebaseEnabled) return;
+            if (!player || !player.name || player.name === 'undefined') return;
+            
+            try {
+                await database.ref('players/' + player.name).set(player);
             } catch (error) {
                 console.error('Firebase save error:', error);
             }
@@ -1895,19 +1968,38 @@
             }
         }
 
+        // Save single player data
+        async function saveCurrentPlayer() {
+            if (!currentPlayer || currentPlayer === 'COACH') return;
+            
+            // Update in players array
+            const idx = players.findIndex(p => p.name === currentPlayer.name);
+            if (idx !== -1) {
+                players[idx] = currentPlayer;
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('gray-team-players-v2', JSON.stringify(players));
+            
+            // Save just this player to Firebase
+            if (isFirebaseEnabled) {
+                await savePlayerToFirebase(currentPlayer);
+            }
+        }
+
         // Populate dropdowns
         function populateDropdowns() {
             const playerSelect = document.getElementById('playerName');
             const coachSelect = document.getElementById('coachPlayerSelect');
             
-            // Clear and repopulate player select
+            // Always use initialPlayers for login dropdown (full roster)
             playerSelect.innerHTML = `
                 <option value="">-- Choose Player --</option>
                 <option value="COACH">🔑 COACH VIEW</option>
-                ${players.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+                ${initialPlayers.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
             `;
             
-            // Clear and repopulate coach select
+            // Coach select shows players with data
             coachSelect.innerHTML = `
                 <option value="all">-- All Players --</option>
                 ${players.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
@@ -1953,10 +2045,21 @@
                     errorEl.style.display = 'block';
                 }
             } else {
-                const player = players.find(p => p.name === selection);
+                let player = players.find(p => p.name === selection);
                 const password = document.getElementById('playerPassword').value;
                 
-                if (password === String(player.number)) {
+                // Get expected number from initialPlayers if player not in Firebase
+                const initialPlayer = initialPlayers.find(p => p.name === selection);
+                const expectedNumber = player?.number || initialPlayer?.number;
+                
+                if (!player && initialPlayer) {
+                    // Player exists in initial roster but not in Firebase - add them
+                    player = JSON.parse(JSON.stringify(initialPlayer));
+                    players.push(player);
+                    savePlayerToFirebase(player);
+                }
+                
+                if (player && password === String(expectedNumber)) {
                     currentPlayer = player;
                     showScreen('playerDashboard');
                     updatePlayerDashboard();
@@ -2046,10 +2149,9 @@
             // Last session
             if (currentPlayer.sessionHistory && currentPlayer.sessionHistory.length > 0) {
                 const last = currentPlayer.sessionHistory[currentPlayer.sessionHistory.length - 1];
-                const totalMin = last.ballMastery + last.wallPassing + last.juggling;
-                document.getElementById('lastSessionInfo').textContent = `⚽ ${totalMin} min Training`;
+                document.getElementById('lastSessionInfo').textContent = `Ball Mastery: ${last.ballMastery || 0}min • Wall Passing: ${last.wallPassing || 0}min • Juggling: ${last.juggling || 0}min • Juggling Streak: ${last.maxJuggles || 0}`;
             } else {
-                document.getElementById('lastSessionInfo').textContent = '⚽ No sessions yet';
+                document.getElementById('lastSessionInfo').textContent = 'No sessions yet';
             }
             document.getElementById('lastSessionDate').textContent = formatDate(currentPlayer.lastSession);
             
@@ -2173,7 +2275,7 @@
                 players[idx].weekStreak = calculateWeekStreak(players[idx]);
                 
                 currentPlayer = players[idx];
-                await saveData();
+                await saveCurrentPlayer();
                 updatePlayerDashboard();
                 resetForm();
                 
@@ -2854,7 +2956,7 @@
             
             currentPlayer = players[playerIdx];
             
-            await saveData();
+            await saveCurrentPlayer();
             updatePlayerDashboard();
             closeEditModal();
             showToast('Session updated! ✅');
@@ -2866,14 +2968,19 @@
                 database.ref('players').on('value', (snapshot) => {
                     const firebaseData = snapshot.val();
                     if (firebaseData) {
-                        players = Object.values(firebaseData);
+                        let firebasePlayers = Object.values(firebaseData)
+                            .map(sanitizePlayerData)
+                            .filter(p => p !== null);
+                        
+                        players = mergeWithInitialRoster(firebasePlayers);
                         players.sort((a, b) => a.name.localeCompare(b.name));
                         
                         // Recalculate all streaks
                         updateAllStreaks();
                         
-                        // Update current view
+                        // Update current player reference
                         if (currentPlayer && currentPlayer !== 'COACH') {
+                            currentPlayer = players.find(p => p.name === currentPlayer.name) || currentPlayer;
                             updatePlayerDashboard();
                         } else if (currentPlayer === 'COACH') {
                             updateCoachDashboard();
@@ -2887,6 +2994,10 @@
 
         // Initialize
         loadData().then(() => {
+            // Clean up any undefined entries in Firebase
+            if (isFirebaseEnabled) {
+                database.ref('players/undefined').remove();
+            }
             listenForUpdates();
         });
 
