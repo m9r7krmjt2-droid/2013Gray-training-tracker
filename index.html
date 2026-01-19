@@ -2148,11 +2148,13 @@
             const playerSelect = document.getElementById('playerName');
             const coachSelect = document.getElementById('coachPlayerSelect');
             
-            // Always use initialPlayers for login dropdown (full roster)
+            // Filter out deleted players from login dropdown
+            const availablePlayers = initialPlayers.filter(p => !deletedPlayerNames.includes(p.name));
+            
             playerSelect.innerHTML = `
                 <option value="">-- Choose Player --</option>
                 <option value="COACH">🔑 COACH VIEW</option>
-                ${initialPlayers.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+                ${availablePlayers.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
             `;
             
             // Coach select shows players with data
