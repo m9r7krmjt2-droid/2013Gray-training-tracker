@@ -2019,14 +2019,15 @@
                         updateConnectionStatus(snap.val() === true);
                     });
 
-                    // Load players from Firebase
-                    const snapshot = await database.ref('players').once('value');
-                    const firebaseData = snapshot.val();
-                    
-                    // Load deleted players list
+                    // Load deleted players list FIRST
                     const deletedSnapshot = await database.ref('deletedPlayers').once('value');
                     const deletedData = deletedSnapshot.val();
                     deletedPlayerNames = deletedData ? Object.keys(deletedData) : [];
+                    console.log('Loaded deleted players:', deletedPlayerNames);
+
+                    // Load players from Firebase
+                    const snapshot = await database.ref('players').once('value');
+                    const firebaseData = snapshot.val();
                     
                     if (firebaseData) {
                         // Get valid players from Firebase
@@ -2037,10 +2038,13 @@
                         // Merge with initial roster
                         players = mergeWithInitialRoster(firebasePlayers);
                     } else {
-                        // Initialize with default roster
-                        players = JSON.parse(JSON.stringify(initialPlayers));
+                        // Initialize with default roster (but filter out deleted players)
+                        players = JSON.parse(JSON.stringify(initialPlayers))
+                            .filter(p => !deletedPlayerNames.includes(p.name));
                         await savePlayersToFirebase();
                     }
+                    
+                    console.log('Final players list:', players.map(p => p.name));
                     
                     players.sort((a, b) => a.name.localeCompare(b.name));
                     
@@ -2714,12 +2718,15 @@
                 if (!deletedPlayerNames.includes(name)) {
                     deletedPlayerNames.push(name);
                 }
+                console.log('Deleting player:', name);
+                console.log('deletedPlayerNames now:', deletedPlayerNames);
                 
                 // Remove from Firebase and add to deleted list
                 if (isFirebaseEnabled) {
                     try {
                         await database.ref('players/' + name).remove();
                         await database.ref('deletedPlayers/' + name).set(true);
+                        console.log('Successfully wrote to Firebase deletedPlayers/' + name);
                     } catch (error) {
                         console.error('Firebase delete error:', error);
                     }
