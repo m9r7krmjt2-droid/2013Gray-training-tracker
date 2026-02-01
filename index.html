@@ -2291,7 +2291,7 @@
         function getWeeklyMinutes(player) {
             if (!player.sessionHistory || player.sessionHistory.length === 0) return 0;
             const now = new Date();
-            const dayOfWeek = now.getDay();
+            const dayOfWeek = now.getDay() || 7; // Convert Sunday from 0 to 7
             const startOfWeek = new Date(now);
             startOfWeek.setDate(now.getDate() - dayOfWeek + 1);
             startOfWeek.setHours(0, 0, 0, 0);
